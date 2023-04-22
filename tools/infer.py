@@ -144,7 +144,7 @@ def main():
                 fig = plt.figure(frameon=False)
                 dpi = 40  # fig.dpi
                 fig.set_size_inches(width / dpi, ((width * pred.shape[0])/pred.shape[1]) / dpi)
-                sns.heatmap(pred, vmin=0, vmax=1, cbar=False, cmap='jet', )
+                sns.heatmap(pred, vmin=0, vmax=1, cbar=False, cmap='gray', )
                 plt.axis('off')
                 plt.savefig(filepath, bbox_inches='tight', transparent=True, pad_inches=0)
                 plt.close(fig)
