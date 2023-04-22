@@ -4,7 +4,7 @@ mjkwon2021@gmail.com
 July 7, 2020
 """
 from abc import ABC, abstractmethod
-from PIL import Image, JpegImagePlugin
+from PIL import Image, ImageOps, JpegImagePlugin
 import numpy as np
 import math
 import jpegio  # See https://github.com/dwgoon/jpegio/blob/master/examples/jpegio_tutorial.ipynb
@@ -213,6 +213,7 @@ class AbstractDataset(ABC):
     def get_PIL_Image(self, index):
         file = self.tamp_list[index][0]
         im = Image.fromarray(cv2.cvtColor(cv2.imread(str(self._root_path / file)), cv2.COLOR_BGR2RGB))
+        im = ImageOps.contain(im, 2048, 2048)
         return im
 
     def __len__(self):
