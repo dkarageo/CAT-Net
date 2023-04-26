@@ -213,7 +213,7 @@ class AbstractDataset(ABC):
     def get_PIL_Image(self, index):
         file = self.tamp_list[index][0]
         im = Image.fromarray(cv2.cvtColor(cv2.imread(str(self._root_path / file)), cv2.COLOR_BGR2RGB))
-        im = ImageOps.contain(im, 2048, 2048)
+        im = ImageOps.contain(im, 1280, 1280)
         return im
 
     def __len__(self):
