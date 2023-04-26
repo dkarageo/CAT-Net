@@ -151,5 +151,9 @@ def main():
             except:
                 print(f"Error occurred while saving output. ({get_next_filename(index)})")
 
+            # Clear cache after each sample.
+            torch.cuda.empty_cache()
+
+
 if __name__ == '__main__':
     main()
