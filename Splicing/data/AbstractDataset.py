@@ -103,7 +103,9 @@ class AbstractDataset(ABC):
     def _create_tensor(self, im_path, mask):
         ignore_index = -1
 
-        img_RGB = np.array(Image.open(im_path).convert("RGB"))
+        img = Image.open(im_path).convert("RGB")
+        img.thumbnail((1024, 1024))
+        img_RGB = np.array(img)
 
         h, w = img_RGB.shape[0], img_RGB.shape[1]
 
@@ -213,7 +215,7 @@ class AbstractDataset(ABC):
     def get_PIL_Image(self, index):
         file = self.tamp_list[index][0]
         im = Image.fromarray(cv2.cvtColor(cv2.imread(str(self._root_path / file)), cv2.COLOR_BGR2RGB))
-        im = ImageOps.contain(im, 1280, 1280)
+        im.thumbnail((1024, 1024))
         return im
 
     def __len__(self):
