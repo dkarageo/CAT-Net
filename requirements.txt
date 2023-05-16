@@ -9,4 +9,5 @@ opencv-python
 tensorboardX
 matplotlib
 seaborn
+click
 git+https://github.com/dwgoon/jpegio.git

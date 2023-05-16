@@ -3,7 +3,7 @@ Created by Myung-Joon Kwon
 mjkwon2021@gmail.com
 July 8, 2020
 """
-
+import pathlib
 
 import torch
 from torch.utils.data import Dataset
@@ -24,7 +24,17 @@ from Splicing.data.dataset_arbitrary import arbitrary
 
 
 class SplicingDataset(Dataset):
-    def __init__(self, crop_size, grid_crop, blocks=('RGB',), mode="train", DCT_channels=3, read_from_jpeg=False, class_weight=None):
+    def __init__(
+        self,
+        crop_size,
+        grid_crop,
+        blocks=('RGB',),
+        mode="train",
+        DCT_channels=3,
+        read_from_jpeg=False,
+        class_weight=None,
+        arbitrary_input_dir: pathlib.Path = pathlib.Path("./input")
+    ):
         self.dataset_list = []
         if mode == "train":
             self.dataset_list.append(FantasticReality(crop_size, grid_crop, blocks, DCT_channels, "Splicing/data/FR_train_list.txt"))
@@ -49,7 +59,12 @@ class SplicingDataset(Dataset):
             # self.dataset_list.append(tampCOCO(crop_size, grid_crop, blocks, DCT_channels, "Splicing/data/bcmc_COCO_valid_list.txt"))
             # self.dataset_list.append(compRAISE(crop_size, grid_crop, blocks, DCT_channels, "Splicing/data/compRAISE_valid.txt"))
         elif mode == "arbitrary":
-            self.dataset_list.append(arbitrary(crop_size, grid_crop, blocks, DCT_channels, "./input/*", read_from_jpeg=read_from_jpeg))
+            print(f"Receiving inputs from {arbitrary_input_dir}")
+            self.dataset_list.append(arbitrary(
+                crop_size, grid_crop, blocks, DCT_channels,
+                str(arbitrary_input_dir/"*"),
+                read_from_jpeg=read_from_jpeg)
+            )
         else:
             raise KeyError("Invalid mode: " + mode)
         if class_weight is None:

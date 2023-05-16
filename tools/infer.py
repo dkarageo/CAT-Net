@@ -11,6 +11,7 @@ mjkwon2021@gmail.com
 June 7, 2021
 """
 import os
+import pathlib
 import sys
 
 path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
@@ -26,41 +27,33 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from torch.nn import functional as F
 
+from lib import models
 from lib.config import config
 from lib.config import update_config
 from lib.core.criterion import CrossEntropy, OhemCrossEntropy
 from lib.utils.utils import FullModel
 
-from Splicing.data.data_core import SplicingDataset as splicing_dataset
-from project_config import dataset_paths
+from Splicing.data.data_core import SplicingDataset
 import seaborn as sns
 
 sns.set_theme()
 import matplotlib.pyplot as plt
+import click
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Train segmentation network')
-
-    parser.add_argument('--cfg',
-                        help='experiment configure file name',
-                        required=True,
-                        type=str)
-    parser.add_argument('opts',
-                        help="Modify config options using the command-line",
-                        default=None,
-                        nargs=argparse.REMAINDER)
-
-    args = parser.parse_args()
-    update_config(config, args)
-
-    return args
-
-
-def main():
-    # args = parse_args()
-    # Instead of using argparse, force these args:
-
+@click.command()
+@click.option("--input_dir",
+              type=click.Path(file_okay=False, exists=True, path_type=pathlib.Path),
+              default="./input",
+              help="Directory where input images are located.")
+@click.option("--output_dir",
+              type=click.Path(file_okay=False, path_type=pathlib.Path),
+              default="./output_pred",
+              help="Directory where output masks will be written.")
+def main(
+    input_dir: pathlib.Path,
+    output_dir: pathlib.Path
+) -> None:
     ## CHOOSE ##
     args = argparse.Namespace(
         cfg='experiments/CAT_full.yaml',
@@ -82,12 +75,16 @@ def main():
     cudnn.enabled = config.CUDNN.ENABLED
 
     ## CHOOSE ##
-    test_dataset = splicing_dataset(crop_size=None, grid_crop=True,
-                                    blocks=('RGB', 'DCTvol', 'qtable'), DCT_channels=1,
-                                    mode='arbitrary', read_from_jpeg=True)  # full model
+    # full model
+    test_dataset = SplicingDataset(crop_size=None, grid_crop=True,
+                                   blocks=('RGB', 'DCTvol', 'qtable'), DCT_channels=1,
+                                   mode='arbitrary', read_from_jpeg=True,
+                                   arbitrary_input_dir=input_dir)
+    # DCT stream
     # test_dataset = splicing_dataset(crop_size=None, grid_crop=True,
     #                                 blocks=('DCTvol', 'qtable'), DCT_channels=1,
-    #                                 mode='arbitrary', read_from_jpeg=True)  # DCT stream
+    #                                 mode='arbitrary', read_from_jpeg=True,
+    #                                 arbitrary_input_dir=input_dir)
 
     print(test_dataset.get_info())
 
@@ -122,7 +119,7 @@ def main():
     gpus = list(config.GPUS)
     model = nn.DataParallel(model, device_ids=gpus).cuda()
 
-    dataset_paths['SAVE_PRED'].mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     def get_next_filename(i):
         dataset_list = test_dataset.dataset_list
@@ -149,7 +146,7 @@ def main():
 
             # filename
             filename = os.path.splitext(get_next_filename(index))[0] + ".png"
-            filepath = dataset_paths['SAVE_PRED'] / filename
+            filepath: pathlib.Path = output_dir / filename
 
             # plot
             try:
