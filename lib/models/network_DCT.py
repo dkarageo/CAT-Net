@@ -303,7 +303,7 @@ class DCT_Stream(nn.Module):
         self.dc_stage4, DC_final_stage_channels = self._make_stage(
             self.dc_stage4_cfg, num_channels, multi_scale_output=True)
 
-        last_inp_channels = np.int(np.sum(DC_final_stage_channels))  # 672
+        last_inp_channels = int(np.sum(DC_final_stage_channels))  # 672
         self.last_layer = nn.Sequential(
             nn.Conv2d(
                 in_channels=last_inp_channels,
