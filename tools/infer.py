@@ -13,6 +13,8 @@ June 7, 2021
 import os
 import pathlib
 import sys
+import timeit
+from typing import Optional
 
 path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
 if path not in sys.path:
@@ -32,6 +34,7 @@ from lib.config import config
 from lib.config import update_config
 from lib.core.criterion import CrossEntropy, OhemCrossEntropy
 from lib.utils.utils import FullModel
+from lib.utils import csv_utils
 
 from Splicing.data.data_core import SplicingDataset
 import seaborn as sns
@@ -42,17 +45,27 @@ import click
 
 
 @click.command()
-@click.option("--input_dir",
-              type=click.Path(file_okay=False, exists=True, path_type=pathlib.Path),
+@click.option("--input_dir", "-i",
+              type=click.Path(exists=True, path_type=pathlib.Path),
               default="./input",
-              help="Directory where input images are located.")
-@click.option("--output_dir",
+              help="Directory where input images are located or a CSV file with their paths.")
+@click.option("--output_dir", "-o",
               type=click.Path(file_okay=False, path_type=pathlib.Path),
               default="./output_pred",
               help="Directory where output masks will be written.")
+@click.option("--csv_root_dir", "-r",
+              type=click.Path(exists=True, file_okay=False, path_type=pathlib.Path),
+              help="Directory to which paths into the provided input CSV file are relative to. "
+                   "This option is only meaningful when the `input_dir` option points to a CSV "
+                   "file.")
+@click.option("--update_input_csv", is_flag=True, default=False,
+              help="When a CSV file is provided as input, providing this flag enables you to "
+                   "update the input CSV, instead of exporting a new one.")
 def main(
     input_dir: pathlib.Path,
-    output_dir: pathlib.Path
+    output_dir: pathlib.Path,
+    csv_root_dir: Optional[pathlib.Path],
+    update_input_csv: bool
 ) -> None:
     ## CHOOSE ##
     args = argparse.Namespace(
@@ -79,7 +92,8 @@ def main(
     test_dataset = SplicingDataset(crop_size=None, grid_crop=True,
                                    blocks=('RGB', 'DCTvol', 'qtable'), DCT_channels=1,
                                    mode='arbitrary', read_from_jpeg=True,
-                                   arbitrary_input_dir=input_dir)
+                                   arbitrary_input_dir=input_dir,
+                                   csv_root=csv_root_dir)
     # DCT stream
     # test_dataset = splicing_dataset(crop_size=None, grid_crop=True,
     #                                 blocks=('DCTvol', 'qtable'), DCT_channels=1,
@@ -121,7 +135,7 @@ def main(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_next_filename(i):
+    def get_next_file(i) -> pathlib.Path:
         dataset_list = test_dataset.dataset_list
         it = 0
         while True:
@@ -129,9 +143,12 @@ def main(
                 i -= len(dataset_list[it])
                 it += 1
                 continue
-            name = dataset_list[it].get_tamp_name(i)
-            name = os.path.split(name)[-1]
-            return name
+            return dataset_list[it].get_tamp_name(i)
+
+    torch.cuda.synchronize()
+    start_time: float = timeit.default_timer()
+
+    predictions: dict[pathlib.Path, pathlib.Path] = {}
 
     with torch.no_grad():
         for index, (image, label, qtable) in enumerate(tqdm(testloader)):
@@ -145,7 +162,8 @@ def main(
             pred = pred.cpu().numpy()
 
             # filename
-            filename = os.path.splitext(get_next_filename(index))[0] + ".png"
+            image_file: pathlib.Path = get_next_file(index)
+            filename: str = f"{image_file.stem}.png"
             filepath: pathlib.Path = output_dir / filename
 
             # plot
@@ -158,11 +176,28 @@ def main(
                 plt.axis('off')
                 plt.savefig(filepath, bbox_inches='tight', transparent=True, pad_inches=0)
                 plt.close(fig)
+                predictions[image_file] = filepath
             except:
-                print(f"Error occurred while saving output. ({get_next_filename(index)})")
+                print(f"Error occurred while saving output. ({get_next_file(index)})")
 
             # Clear cache after each sample.
             torch.cuda.empty_cache()
+
+    # Compute elapsed time.
+    torch.cuda.synchronize()
+    stop_time: float = timeit.default_timer()
+    elapsed_time: float = stop_time - start_time
+    print(f"Total time: {elapsed_time} secs")
+    print(f"Time per image: {elapsed_time / len(test_dataset)}")
+
+    if input_dir.is_file() and update_input_csv:
+        # Exports references to the predicted masks to the input CSV.
+        output_references: csv_utils.AlgorithmOutputData = csv_utils.AlgorithmOutputData(
+            tampered=predictions,
+            untampered=None,
+            response_times=None
+        )
+        output_references.save_csv(input_dir, root_path=csv_root_dir, output_column="catnetv2")
 
 
 if __name__ == '__main__':

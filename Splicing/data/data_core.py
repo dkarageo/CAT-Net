@@ -1,9 +1,14 @@
 """
+Updated by Dimitrios Karageorgiou
+dkarageo@iti.gr
+Mar 31, 2024
+
 Created by Myung-Joon Kwon
 mjkwon2021@gmail.com
 July 8, 2020
 """
 import pathlib
+from typing import Optional
 
 import torch
 from torch.utils.data import Dataset
@@ -20,7 +25,7 @@ from Splicing.data.dataset_CASIA import CASIA
 # from Splicing.data.dataset_COVERAGE import COVERAGE
 # from Splicing.data.dataset_CoMoFoD import CoMoFoD
 # from Splicing.data.dataset_GRIP import GRIP
-from Splicing.data.dataset_arbitrary import arbitrary
+from Splicing.data.dataset_arbitrary import ArbitraryDataset
 
 
 class SplicingDataset(Dataset):
@@ -33,7 +38,8 @@ class SplicingDataset(Dataset):
         DCT_channels=3,
         read_from_jpeg=False,
         class_weight=None,
-        arbitrary_input_dir: pathlib.Path = pathlib.Path("./input")
+        arbitrary_input_dir: pathlib.Path = pathlib.Path("./input"),
+        csv_root: Optional[pathlib.Path] = None
     ):
         self.dataset_list = []
         if mode == "train":
@@ -60,11 +66,12 @@ class SplicingDataset(Dataset):
             # self.dataset_list.append(compRAISE(crop_size, grid_crop, blocks, DCT_channels, "Splicing/data/compRAISE_valid.txt"))
         elif mode == "arbitrary":
             print(f"Receiving inputs from {arbitrary_input_dir}")
-            self.dataset_list.append(arbitrary(
+            self.dataset_list.append(ArbitraryDataset(
                 crop_size, grid_crop, blocks, DCT_channels,
-                str(arbitrary_input_dir/"*"),
-                read_from_jpeg=read_from_jpeg)
-            )
+                arbitrary_input_dir,
+                read_from_jpeg=read_from_jpeg,
+                csv_root=csv_root
+            ))
         else:
             raise KeyError("Invalid mode: " + mode)
         if class_weight is None:
