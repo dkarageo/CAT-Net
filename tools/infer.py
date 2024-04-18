@@ -164,7 +164,21 @@ def main(
             # filename
             image_file: pathlib.Path = get_next_file(index)
             filename: str = f"{image_file.stem}.png"
-            filepath: pathlib.Path = output_dir / filename
+            if input_dir.is_file():
+                # When the input source is a CSV file, in order to guarantee that files with
+                # the same filename do not overwrite each other in the output dir, retain the
+                # whole structure defined in the input csv.
+                if csv_root_dir is None:
+                    relative_to: pathlib.Path = input_dir.parent
+                else:
+                    relative_to = csv_root_dir
+                output_dir_relative_structure: pathlib.Path = image_file.parent.relative_to(
+                    relative_to
+                )
+                filepath: pathlib.Path = output_dir / output_dir_relative_structure / filename
+                filepath.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                filepath: pathlib.Path = output_dir / filename
 
             # plot
             try:
