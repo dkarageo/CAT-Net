@@ -104,7 +104,7 @@ class AbstractDataset(ABC):
         ignore_index = -1
 
         img = Image.open(im_path).convert("RGB")
-        img.thumbnail((1024, 1024))
+        img.thumbnail((2048, 2048))
         img_RGB = np.array(img)
 
         h, w = img_RGB.shape[0], img_RGB.shape[1]
